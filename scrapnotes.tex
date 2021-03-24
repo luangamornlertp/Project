@@ -1,0 +1,27 @@
+%%Hedge
+\subsubsection{Hedge/Weighted Majority Algorithm}
+The \textbf{Hedge}, also known as the \textbf{Weighted Majority} \cite{wma} is an algorithm used to update the weighting of variables to decide which variable we should focus on when doing the next round $t + 1$. 
+In our case, we use an adapted algorithm from Littlestone and Warmuth which Freund and Schapire called \textbf{Hedge($\beta$)} with the following distribution vector.
+\begin{equation}
+   \textbf{p}^t = \frac{\textbf{w}^t}{\sum_{i=1}^{n} w_i^t } 
+\end{equation}
+Where $\textbf{w}^t$ is the vector of weights.
+The following algorithm shows us how to update the Hedge($\beta$) after each turn:
+
+\begin{algorithm}
+\SetAlgoLined
+\textbf{Parameters}:
+\begin{description}
+    \item $\beta \in [0,1]$
+    \item Initial Weight Vector $\textbf{w}^1 \in [0,1]^n$ with $\sum_{i=1}^{n} w_i^1 = 1$
+    \item number of trials $T$
+\end{description}
+\For{$t = 1,\dots,T$}{
+Choose Allocation \[ \frac{\textbf{w}^t}{\sum_{i=1}^{n} w_i^t} \] \\
+Incure Loss Vector $\ell^t \in [0,1]^n $ leading to loss $\textbf{p}^t \ell^t$ \\
+Set New Weight to be 
+\[ w_i^{t+1} = w_i^t \beta^{l_i^t}
+\] 
+}
+\caption{Hedge}
+\end{algorithm}

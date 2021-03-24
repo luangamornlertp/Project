@@ -1,0 +1,50 @@
+\documentclass{standalone}
+
+\usepackage[latin1]{inputenc}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\begin{document}
+\pagestyle{empty}
+
+
+% Define block styles
+\tikzstyle{decision} = [diamond, draw, fill=blue!20, 
+    text width=4em, text badly centered, node distance=3cm, inner sep=0pt]
+\tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+    text width=6em, text centered, rounded corners, minimum height=3em]
+\tikzstyle{line} = [draw, -latex']
+
+
+\begin{tikzpicture}[node distance = 3.5cm, auto]
+    \node[block] (data) {Data};
+    \node[block, right of=data] (samp) {Bootstrap Sample};
+    \node[block, above of=samp] (samp1) {Bootstrap Sample};
+    \node[block, above of=samp1] (samp2) {Bootstrap Sample};
+    \node[block, below of=samp] (samp3) {Bootstrap Sample};
+    \node[block, below of=samp3] (samp4) {Bootstrap Sample};
+    \node[block, right of=samp] (tree) {Bootstrapped Tree};
+    \node[block, right of=samp1] (tree1) {Bootstrapped Tree};
+    \node[block, right of=samp2] (tree2) {Bootstrapped Tree};
+    \node[block, right of=samp3] (tree3) {Bootstrapped Tree};
+    \node[block, right of=samp4] (tree4) {Bootstrapped Tree};
+    \node[block, right of=tree] (avg) {Averaged Model};
+    
+    \path[line] (data) -- (samp);
+    \path[line] (data) -- (samp1);
+    \path[line] (data) -- (samp2);
+    \path[line] (data) -- (samp3);
+    \path[line] (data) -- (samp4);
+    \path[line] (samp) -- (tree);
+    \path[line] (samp1) -- (tree1);
+    \path[line] (samp2) -- (tree2);
+    \path[line] (samp3) -- (tree3);
+    \path[line] (samp4) -- (tree4);
+    \path[line] (tree) -- (avg);
+    \path[line] (tree1) -- (avg);
+    \path[line] (tree2) -- (avg);
+    \path[line] (tree3) -- (avg);
+    \path[line] (tree4) -- (avg);
+\end{tikzpicture}
+
+
+\end{document}

@@ -1,0 +1,35 @@
+\documentclass{standalone}
+
+\usepackage[latin1]{inputenc}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows}
+\begin{document}
+\pagestyle{empty}
+
+
+% Define block styles
+\tikzstyle{decision} = [diamond, draw, fill=blue!20, 
+    text width=4em, text badly centered, node distance=3cm, inner sep=0pt]
+\tikzstyle{block} = [rectangle, draw, fill=blue!20, 
+    text width=6em, text centered, rounded corners, minimum height=3em]
+\tikzstyle{line} = [draw, -latex']
+
+
+\begin{tikzpicture}[node distance = 3.5cm, auto]
+    \node[block] (data) {Data};
+    \node[block, right of=data] (init) {Initial Model};
+    \node[block, right of=init] (candidate) {Updated Model $F_{i} (x) = F_{i-1} + h_{i}$};
+    \node[decision, right of=candidate] (optimal) {Optimal Model?};
+    \node[block, below of=optimal] (weaklearn) {Model new \textit{weak learner} $h_i$};
+    \node[block, right of=optimal] (best) {Optimal Model};
+    
+    \path[line] (data) -- (init);
+    \path[line] (init) -- (candidate);
+    \path[line] (candidate) -- (optimal);
+    \path[line] (optimal) -- node {yes}(best);
+    \path[line] (optimal) -- node  {no} (weaklearn);
+    \path[line] (weaklearn) -| (candidate);
+\end{tikzpicture}
+
+
+\end{document}

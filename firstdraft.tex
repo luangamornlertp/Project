@@ -8,6 +8,8 @@
 \usepackage{dirtytalk}
 \UseRawInputEncoding
 \usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows, shadows, matrix, calc, trees, positioning, chains, automata}
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{mathtools}
@@ -665,9 +667,166 @@ For full disclosure I am not the first person to do this and in fact, this has b
     \label{fig:hof}
 \end{figure}
 
-\chapter{Random Forest}
+\chapter{Bagging and Random Forest}
+Not content with the flaws of CART, Leo Breiman started working on methods to improve on and ended up with two methods which are closely linked and follow on from each other. While many others tried to improve metric selections, they tend to have their own flaws which make them less useful than CART. Breiman figured out that bootstrapping techniques \cite{bootstrap} were the most efficient method, in the 1990s in terms of computer power, while also providing an improvement over CART.
+\bigskip\\
+The first is \textbf{B}ootstrap \textbf{Agg}regat\textbf{ing} (Bagging) \cite{bagging} \footnote{As an aside, the editor of that paper was Ross Quinlan, the same person who invented ID3, C4.5} which uses bootstrapping techniques to generate many trees to aggregate. Here, all $n$ features are selected as possible splitting nodes for trees and we \textit{aggregate} all trees to build our model.
+\medskip\\
+The next stage improvement was \textbf{Random Forests} \cite{randomforest}.
+Random Forest uses bootstrapping techniques to train multiple weak learners which create a much stronger model when combined together.
+Indeed Random Forests only differ from Bagging in the selection of features as Random Forests only select a subset of features and "vote" on the best features when aggregating the final model.
+\bigskip\\
+These technique are called \textbf{Ensemble Learning} and will come up again since they are the most common methods to improving accuracy on decision trees.
+Note that while these methods do allow us to reduce the chance of overfitting the data compared to regular Decision Tree methods, they do not eliminate them and it is still possible for overfitting to occur although the prevalence of multiple bootstrapping samples averaging each other out does reduce the chance of overfitting occuring.
 
-\chapter{Bagging}
+\section{Bagging}
+Bootstrap Aggregating (Bagging) involves using multiple learning samples from the $\{x_{i}, y_{i}\}_{i=1}^{n}$ dataset, we collectively denoted these as $\mathcal{L}$. 
+We denote each bootstrap sample as $\mathcal{L}_k$ where $k \in [1, \dots, B]$.\\
+The aim here is to get an aggregated predictor, made up of individual predictors $\varphi_k$ which is better than the individual predictor, which we will denote the final predictor as $\varphi$. 
+This is achieved by taking the average of the bootstrap samples:
+
+\[ \varphi = av_{k = 1,\dots,B} (\varphi_k) \]
+
+In theory, this bagged estimator is:
+\begin{equation}
+    \varphi = \frac{1}{B} \sum_{k=1}^{B} \varphi_k
+\end{equation}
+Thus we can define Bagging as follows:
+\begin{definition}[Bagging]
+    A tree-based method comprised of $B$ \textit{randomly} bootstrapped, independent and identically distributed, samples where the final predictor is formed by aggregating all $B$ samples 
+\end{definition}
+Each bootstrap is drawn at random and with replacement and thus it is possible for repeated trees to occur. 
+Thus stronger decision points would tend to outweigh weaker trees as they pull the average towards these decisions.
+\medskip\\
+We will now follow on from Leo Breiman's paper \cite{bagging} for the procedure needed.
+
+\subsection{Classification}
+For each individual tree, we use the same method to construct them as we had previously.
+The following procedure is followed for all runs:
+\begin{algorithm}
+\begin{enumerate}
+    \item A seed is set to allow for replication
+    
+    \item The full dataset is split \textit{randomly} into a learning set $\mathcal{L}$ and a testing set $\mathcal{T}$
+    
+    \item A Classification Tree is constructed from the full $\mathcal{L}$ and the test set $\mathcal{T}$ is run to test the misclassification rate
+    
+    \item 50 bootstrap sample from $\mathcal{L}$ are drawn randomly, and each make a $\phi$ classifier to form $\phi_1, \dots, \phi_{50}$
+    
+    \item All 50 $\phi$ classifiers are compared with each other and the most common classifier is selected, else, the class with the lowest error relative to the full Classification Tree is selected and this becomes $\varphi_k$
+    
+    \item Repeat steps 4-5 $k$ times and average the $\varphi_k$ values to obtain $\varphi$
+\end{enumerate}
+\caption{Classification Bagging}
+\end{algorithm}
+
+
+
+\subsection{Regression}
+Similarly, we use an almost identical meta-algorithm to classification but with some minor differences.
+The following procedure is followed for all runs:
+\begin{algorithm}
+\begin{enumerate}
+    \item A seed is set to allow for replication
+    
+    \item The full dataset is split \textit{randomly} into a learning set $\mathcal{L}$ and a testing set $\mathcal{T}$
+    
+    \item A Regression Tree is constructed from the full $\mathcal{L}$ and the test set $\mathcal{T}$ is run to test the misclassification rate
+    
+    \item 50 bootstrap sample from $\mathcal{L}$ are drawn randomly, and each make a $\phi$ regression to form $\phi_1, \dots, \phi_{50}$
+    
+    \item Here, the predictor is $\hat{y}_k = av\phi_k$ is used instead of $\varphi$ where we have the squared error $av(y_n - \hat{y}_n)^2$
+    
+    \item Repeat steps 4-5 $k$ times and average the $\hat{y}_k$ values to obtain $\varphi$
+\end{enumerate}
+\caption{Regression Bagging}
+\end{algorithm}
+
+
+\subsection{Implementations of Bagging}
+There are two ways one could implement bagging. The first is using the \texttt{bagging} function from the \texttt{ipred} library \cite{ipred}. 
+This is a version which relies on \texttt{rpart} from earlier and does not require much data prep. 
+\bigskip\\
+An alternative version is using \texttt{randomForest} \cite{Rforest} and setting \texttt{mtry = m} where \texttt{m} is the number of variables we have in the data we want to perform bagging on.
+\bigskip\\
+These two versions do not prove to differ by much and are essentially identical in the grand scheme of things, as they usually differ from different samples being bootstrapped.
+However you may prefer to use \texttt{randomForest} if you were to be also performing a Random Forest at the same time. 
+
+
+\section{Random Forests}
+Random Forests are a natural development from Bagging as they use very similar techniques for growing ensembles. 
+In his paper \cite{randomforest}, which will be replicated here, he noted that while both Bagging and Random Forests are similar, Bagging is akin to "\dots darts thrown at random boxes \dots", Random Forests are much more civilized in nature as they are formed by voting "\dots for the most popular class."\\
+In fact the trees we grow are actually formed and trained using bagging methods we have described earlier.
+
+
+\subsection{Convergence of Random Forests}
+We firstly show that Random Forests converge.
+We begin by using Breiman's definition of what a Random Forest is \cite{randomforest}:
+\begin{definition}[Random Forests]
+    A tree-based method formed from $k$, $k \in \mathbb{N}$, independent and identically distributed ensemble of classifiers, $h_1, \dots , h_k$.\\
+    Each tree casts one vote for the most popular class which is to be selected.
+\end{definition}
+We have that $h_{k_i}$ is the classifier we get from sample $k$ from the full dataset $\{x_i, y_i\}_{i=1}^{n}$. 
+Here, as always, we use two different metrics for classification and regression:
+\subsubsection{Classification}
+We can define the margin function, which measures the average number of votes for the class $k_1$ over all other classes $k_i$, $i \neq 1$, with indicator $I$ as 
+\begin{definition}[Margin of Random Forests]
+   \[ mg(x, y) = av_k I (h_{k_1}) - \max_{k_i \neq k_1} av_k I (h_{k_i}) \] 
+\end{definition}
+
+We aim to maximise the margin as this shows that the ensembles are more likely to agree with what is a strong split compared to weaker splits.
+
+\subsubsection{Regression}
+Here, unlike previously, we used the mean-squared error instead of the residual sum-squared:
+\begin{definition}[Mean-Squared Generalization Error]
+    Given the vector $y_{k_i}$ made up of the true values from the selected $x_{k_i}$ variables, the mean-squared generalization error is
+    \[ E(y_{k_i} - h_{k_i})^2 \]
+\end{definition}
+
+\subsection{Random Forest Algorithm}
+Using the above metrics, we can now give the meta-algorithm for the Random Forest Algorithm. Note that it is in fact very similar to the algorithm for Bagging as we are using Bootstrapping to select individual ensemble trees which we are aiming to use in our final model.
+\subsubsection{Algorithm}
+\begin{algorithm}
+\SetAlgoLined
+\begin{enumerate}
+    \item A seed is set to allow for replication
+    
+    \item Draw $B$ bootstrapped samples from the learning set $\mathcal{L}$
+        
+    \item Grow a random forest as follows:
+    \begin{enumerate}
+        \item Select $m$ variables randomly from the sample $\mathcal{L}_b$ where $b \in [1, \dots, B]$
+        
+        \item Form a regular decision tree using only the selected features and the relevant metric described above
+        
+        \item Output the classifiers $\phi_1, \dots, \phi_B$
+    \end{enumerate}
+    
+    \item Make a prediction as follows
+    \begin{description}
+        \item[Regression] $ \frac{1}{B} \sum_{b=1}^{B} \phi_b $
+        
+        \item[Classification] $majority \{\phi_b\}_{b=1}^{B}$
+    \end{description}
+\end{enumerate}
+\caption{Random Forest Algorithm}
+\end{algorithm}
+Here, we note the following when choosing the preferred optimal value of $m$ (For which \texttt{randomForest} does this automatically if undefined by the user):
+\begin{itemize}
+    \item \textbf{Classification} - $m = \left \lfloor{\sqrt{p}} \right \rfloor$ with minimum node size one
+    
+    \item \textbf{Regression} - $m = \left \lfloor{\frac{p}{3}} \right \rfloor$ with minimum node size five
+\end{itemize}
+
+\subsubsection{Out of Bag Samples}
+The \textbf{Out of Bag Samples} (OOB) is used to check how good how well a model is fitted. 
+A feature of selecting only a certain sample for bootstrapping is that we can use the samples not selected for a certain bootstrap to be a testing variable. 
+Thus if variable $\{x_i, y_i\} \notin \mathcal{L}$ we can construct a predictor for this variable from the trees in which this variable is not a training data in.
+\bigskip\\
+We are able to use this value to tell us right away if a model is good as a good model would have a low OOB value. 
+This is helpful as \texttt{R} calculates the OOB value for us automatically and if a bad model were to be found to have been fitted, we can discover this early on before proceeding onwards towards predicting values.
+
+\subsection{Example}
 
 
 \chapter{Boosting}
@@ -675,12 +834,135 @@ Boosting is a more modern method of ensemble learning and is based on the philos
 \bigskip
 The first modern meta-algorithm used for boosting was called \textbf{Adaptive Boosting} (commonly called AdaBoost) [Freund and Schapire], however, recently the newer meta-algorithm of \textbf{Gradient Boosting} [Friedman, 1999] has become the more preferred method mainly in part due to the \textbf{XGBoost} library which works for many languages including Python, R, Julia, Java, and C++. Another modern library is LightGBM by Microsoft [Ke, 2016] which is based on decision tree algorithms.
 
+\chapter{Boosting}
+\textbf{Boosting} is the next progression onwards from Random Forests.
+There are many implementations of Boosting Algorithms presently available including AdaBoost, Gradient Boosting, xgBoost, LightGBM etc.
+We will focus on the two most famous implementations, AdaBoost \cite{adaboost}, and Gradient Boosting \cite{gbm} along with a modern extension of this, xgBoost \cite{xgboost}.
+While Boosting is similar to Random Forests, there are some subtle differences which make them much more accurate and optimal in terms of making predictions.
+
+\subsubsection{Difference Between Boosting and Bagging/RF}
+While the previously seen methods of Bagging and Random Forests work on Bootstrapping samples and running many trees at the same time before aggregating/voting for results, Boosting involves using many "weak learners" which learn from incorrect predictions. 
+Here, incorrect learners are sampled more often and given more weight when learning to improve on these mistakes and try to minimize the errors that these weak learners produce.
+The final model is formed from combining all the weak learners into a much stronger single model.
+
+
 \section{AdaBoost}
+The first modern boosting model is the \textbf{Adaptive Boosting} (AdaBoost) model. Freund and Schapire had both independently developed basic boosting algorithms , but they were not optimal and thus they combined to work on AdaBoost which resolved most of the issues that had occured in previous attempts \cite{adaboost}.
+\medskip\\
+The idea \cite{adasummary} is to have $t = [1,\dots,T]$ \textit{weak learners} - which consist of small one-step decision trees referred to as stumps - and maintain weight over each training variable $x_i$ in the training set.
+The weight for training variable $i$ on weak learner round $t$ is denoted $w_t (i)$, and is initially set the same for all models before being updated after each round $t$. The weight is adjusted so that the variables which have been {\color{red} \underline{incorrectly classified}} are given more weight for the $t+1$ round. We will first formulate this as a classification problem before extending it for regression.
+
+\subsection{Adjusting for Incorrect Classification}
+
+\subsubsection{Error of Weak Hypothesis}
+The job of the weak learner is to find a weak hypothesis $h_t : X \rightarrow \{-1,+1\}$ for $x_i \in X$ suitable for $w_t$ \cite{adasummary}. How good the hypothesis is can be tested by its error $\varepsilon_t$.
+\begin{equation}
+   \varepsilon_t = \sum_{h_t (x_i) \neq y_i} w_t (i) 
+\end{equation}
+In computations there exists a function called \textbf{WeakLearn} which achieves this by using \textit{decision stumps}.
+
+%%Hedge
+\subsubsection{Hedge/Weighted Majority Algorithm}
+The \textbf{Hedge}, also known as the \textbf{Weighted Majority} \cite{wma} is an algorithm used to update the weighting of variables to decide which variable we should focus on when doing the next round $t + 1$. 
+In our case, we use an adapted algorithm from Littlestone and Warmuth which Freund and Schapire called \textbf{Hedge($\beta$)} with the following distribution vector.
+\begin{equation}
+   \textbf{p}_t = \frac{\textbf{w}_t}{\sum_{i=1}^{n} w_t (i) } 
+\end{equation}
+Where $\textbf{w}^t$ is the vector of weights.
+The following algorithm shows us how to update the Hedge($\beta$) after each turn:
+
+\begin{algorithm}
+\SetAlgoLined
+\textbf{Parameters}:
+\begin{description}
+    \item $\beta \in [0,1]$
+    \item Initial Weight Vector $\textbf{w}_1 \in [0,1]^n$ with $\sum_{i=1}^{n} w_1 (i) = 1$
+    \item number of trials $T$
+\end{description}
+\For{$t = 1,\dots,T$}{
+Choose Allocation \[ \frac{\textbf{w}_t}{\sum_{i=1}^{n} w_t (i)} \] \\
+Incure Loss Vector $\ell^t \in [0,1]^n $ leading to loss $\textbf{p}^t \ell^t$ \\
+Set New Weight to be 
+\[ w_{t+1} (i) = w_t (i) \beta^{\ell_t (i)}
+\] 
+}
+\caption{Hedge}
+\end{algorithm}
+\textbf{Note:} In fact, we can adapt this to the scenario where we have $\ell = \left|h_t(x_i) - y_i \right|$ and $\beta = \frac{\varepsilon}{1 - \varepsilon}$ and already achieve our AdaBoost with the following return:
+\[
+h_f (x) = 
+\begin{cases}
+1, & \text{if } \sum_{t=1}^T \left(\log \frac{1}{\beta^t} \right) h_t (x) \geq \frac{1}{2} \sum_{t=1}^T \left(\log \frac{1}{\beta^t} \right) \\
+0, & \text{otherwise}
+\end{cases}
+\]
+However, computationally, this is not preferred and a much more efficient algorithm is used when re-scaling the weightings.
+
+\subsection{AdaBoost Algorithm for Classification}
+\begin{algorithm}
+\SetAlgoLined
+\begin{enumerate}
+    \item Set $\textbf{w}_1 = \frac{1}{n}$ $\forall$ $n$ training sets
+    
+    \item \For{$t = 1,\dots,T$}{
+    Pick $h_t$ which minimizes $\varepsilon_t = \sum_{h_t (x_i) \neq y_i} w_t (i) $ \\
+    Compute weight of chosen classifier 
+    \[\alpha_t = \frac{1}{2} \log \frac{1 - \varepsilon_t}{\varepsilon_t} \] \\
+    Update weights
+    \[ w_{t+1} (i) = \frac{w_t (i) \exp{-\alpha y_i h_t (x_i)}}{Z_t} \]
+    Where $Z_t$ is the normalization factor \\
+    Break if $\varepsilon_t = 0$ or $\varepsilon_t \geq \frac{1}{2}$
+    }
+    
+    \item Output final hypothesis
+    \[ h_f (x) = \text{sign} \left(\sum_{t=1}^T \alpha_t h_t (x) \right) \]
+\end{enumerate}
+\caption{AdaBoost}
+\end{algorithm}
 
 
-\section{XGBoost}
 
-\section{LightGBM}
+\subsection{AdaBoost are Random Forests}
+When comparing AdaBoost with Random Forests, one wonders whether the improvements between models are worth comparing. Indeed this was noted by Breiman in his Random Forests paper \cite{randomforest} suggests that these two methods are very similar. In fact Breiman made the following conjecture which we will call a theorem:
+\begin{theorem}
+AdaBoost is a Random Forest
+\end{theorem}
+The "proof" of this will be left to the reader to consult \cite{randomforest}
+
+\section{Gradient Boosting}
+Gradient Boosting was developed by Jerome Friedman \cite{gbm} and is similar to AdaBoost, but relies on the idea of \textbf{gradient descent} 
+\subsection{Gradient Boosting Machines}
+
+
+\section{Flowchart Showing Model Building}
+\begin{tikzpicture}[->,>=stealth']
+    % Start
+    \node[state] (Data)
+    {\begin{tabular}{l}
+        \textbf{Data Set} 
+    \end{tabular}}
+    
+    \node[state,
+    node distance=6cm,     
+    text width=3cm,        
+    right of= Data,        
+    yshift=+3cm] (Train)
+    {\begin{tabular}{l}
+        \textbf{Training Data}
+    \end{tabular}
+    }
+    
+    \node[state,
+    node distance=6cm,     
+    text width=3cm,        
+    below of= Train,        
+    yshift=-3cm] (Test)
+    {\begin{tabular}{l}
+        \textbf{Testing Data}
+    \end{tabular}
+    }
+    
+\end{tikzpicture}
 
 
 \bibliographystyle{apalike}
